@@ -65,7 +65,7 @@ The data set structure is as follows.
 ```
 ##### Step 5: Visualizing data
 <div  align="center">    
-<img src="image/visulize.png" width=80% height=80% border=0/>
+<img src="output_images/visulize.png" width=80% height=80% border=0/>
 </div>
 
 
