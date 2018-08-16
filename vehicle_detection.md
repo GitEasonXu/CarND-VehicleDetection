@@ -28,7 +28,7 @@ not_cars_path = './data/non-vehicles'
 cars = glob.glob(cars_path+'/*/*.png')
 not_cars = glob.glob(not_cars_path+'/*/*.png')
 ```
-##### Step 2: Expore Data
+##### Step 2: Explore Data
 
 The size of car samples is `8792`  
 The size of not car samples is `8968`   
@@ -64,16 +64,133 @@ The data set structure is as follows.
     └── vehicles
 ```
 ##### Step 5: Visualizing data
+
 <div  align="center">    
-<img src="output_images/visulize.png" width=80% height=80% border=0/>
+<img src="output_images/visulize.png" width=50% height=50% border=0/>
 </div>
 
+---
+### Deep Neural Network Architecture
 
-### Histogram of Oriented Gradients (HOG)
+##### Step 1: Building CNN model
 
-#### 1. Explain how (and identify where in your code) you extracted HOG features from the training images.
+How to build model, you can see the code section of load model in the `train_keras_model.ipynb`. Model architecture is as follows:
+```
 
-The code for this step is contained in the first code cell of the IPython notebook (or in lines # through # of the file called `some_file.py`).  
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #   
+=================================================================
+lambda_1 (Lambda)            (None, 64, 64, 3)         0         
+_________________________________________________________________
+conv2d_1 (Conv2D)            (None, 64, 64, 64)        4864      
+_________________________________________________________________
+max_pooling2d_1 (MaxPooling2 (None, 32, 32, 64)        0         
+_________________________________________________________________
+conv2d_2 (Conv2D)            (None, 32, 32, 128)       73856     
+_________________________________________________________________
+max_pooling2d_2 (MaxPooling2 (None, 16, 16, 128)       0         
+_________________________________________________________________
+batch_normalization_1 (Batch (None, 16, 16, 128)       512       
+_________________________________________________________________
+dropout_1 (Dropout)          (None, 16, 16, 128)       0         
+_________________________________________________________________
+conv2d_3 (Conv2D)            (None, 16, 16, 128)       147584    
+_________________________________________________________________
+max_pooling2d_3 (MaxPooling2 (None, 8, 8, 128)         0         
+_________________________________________________________________
+batch_normalization_2 (Batch (None, 8, 8, 128)         512       
+_________________________________________________________________
+dropout_2 (Dropout)          (None, 8, 8, 128)         0         
+_________________________________________________________________
+conv2d_4 (Conv2D)            (None, 1, 1, 64)          524352    
+_________________________________________________________________
+dropout_3 (Dropout)          (None, 1, 1, 64)          0         
+_________________________________________________________________
+conv2d_5 (Conv2D)            (None, 1, 1, 2)           130       
+_________________________________________________________________
+activation_1 (Activation)    (None, 1, 1, 2)           0         
+_________________________________________________________________
+reshape_1 (Reshape)          (None, 2)                 0         
+=================================================================
+Total params: 751,810
+Trainable params: 751,298
+Non-trainable params: 512
+_________________________________________________________________
+```
+##### Note:
+The output shape which the last two layers of the model are `(None,1,1,2)` and `(None,2)`. `None` is `batch size`, `2` is `num_classes`. So your model last two layer output shape are must `(None, 1,1,num_classes)` and `(None,num_classes)`.
+
+##### Step 2: Load Train&Test data
+Use Keras ImageDataGenerator to load Train&Test data.
+```
+from keras.preprocessing.image import ImageDataGenerator
+batch_size = 64
+train_datagen = ImageDataGenerator(
+        shear_range=0.2,
+        zoom_range=0.1,
+        rotation_range=10.,
+        horizontal_flip=True)
+
+train_generator = train_datagen.flow_from_directory(
+        'data',
+        target_size=(64, 64),
+        batch_size=batch_size)
+
+test_datagen = ImageDataGenerator()
+test_generator = test_datagen.flow_from_directory(
+        'testdata',
+        target_size=(64, 64),
+        batch_size=batch_size)
+```
+About the detail of keras ImageDataGenerator you can see [here](https://keras-cn.readthedocs.io/en/latest/preprocessing/image/)
+
+Here explain the `flow_from_directory` usage. `data` and `testdata` are the directory which you want to load the data set of `Train` and `Test`.
+`target_size=(64, 64)` is image shape. `batch_size=batch_size` setting CNN model batch size.
+
+##### Step 3: Train and Save CNN Model
+
+```
+history_object = model.fit_generator(
+        train_generator,
+        steps_per_epoch= 33743  // batch_size,
+        epochs= 10,
+        callbacks=callbacks,
+        validation_data = test_generator,
+        validation_steps = 1777  // batch_size)
+model.save('./model/model.h5')
+print("Model Saved!")
+```
+##### Step 4: Visualize training model result
+Visualization code is as follows:
+```
+from matplotlib import pyplot as plt
+history=history
+plt.plot(history.history['acc'])
+plt.plot(history.history['val_acc'])
+plt.title('model accuracy')
+plt.xlim(0,10)
+plt.ylabel('accuracy')
+plt.xlabel('epoch')
+plt.legend(['train', 'test'], loc='upper left')
+plt.savefig('output_images/acc.png')
+plt.show()
+# summarize history for loss
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.title('model loss')
+plt.xlim(0, 10)
+plt.ylim(0, 0.5)
+plt.ylabel('loss')
+plt.xlabel('epoch')
+plt.legend(['train', 'test'], loc='upper left')
+plt.savefig('out')
+plt.show()
+```
+<img src="output_images/loss.png" width=60% height=60% border=0/>
+Figure 1. Loss result
+<img src="output_images/acc.png" width=60% height=60% border=0/>
+Figure 2. Accuracy result
+
 
 I started by reading in all the `vehicle` and `non-vehicle` images.  Here is an example of one of each of the `vehicle` and `non-vehicle` classes:
 
