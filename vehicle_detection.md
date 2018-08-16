@@ -188,12 +188,7 @@ plt.show()
 ```
 <div  align="center">    
 <img src="output_images/loss.png" width=50% height=50% border=0/>
-Figure 1. Loss result
-</div>
-
-<div  align="center">
 <img src="output_images/acc.png" width=50% height=50% border=0/>
-Figure 2. Accuracy result
 </div>
 
 I started by reading in all the `vehicle` and `non-vehicle` images.  Here is an example of one of each of the `vehicle` and `non-vehicle` classes:
