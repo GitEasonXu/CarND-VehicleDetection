@@ -21,6 +21,7 @@ The goals / steps of this project are the following:
 ##### Provide a basic summary of the data set. In the code, the analysis should be done using python, numpy and/or pandas methods rather than hardcoding results manually.
 
 ##### Step 1: Load image dataset
+I started by reading in all the `vehicle` and `non-vehicle` images. 
 ```
 cars_path = './data/vehicles'
 not_cars_path = './data/non-vehicles'
@@ -191,69 +192,99 @@ plt.show()
 <img src="output_images/acc.png" width=50% height=50% border=0/>
 </div>
 
-I started by reading in all the `vehicle` and `non-vehicle` images.  Here is an example of one of each of the `vehicle` and `non-vehicle` classes:
+##### Summary:
+The accuracy of the training set and the test set are very similar, indicating that the model is not over-fitting.
 
-![alt text][image1]
+##### Step 5: Test model 
+- Load model
+```
+model = CNN_model(input_shape = (260, 1280, 3), is_training = False)
+model.load_weights('./model/model.h5')
+```
+**Remark**
+The `is_training` parameter of `CNN_model` must be setted `False` when you used model to prediction.
 
-I then explored different color spaces and different `skimage.hog()` parameters (`orientations`, `pixels_per_cell`, and `cells_per_block`).  I grabbed random images from each of the two classes and displayed them to get a feel for what the `skimage.hog()` output looks like.
+- Generating heat map image
+```
+imgimg  ==  mpimgmpimg..imreadimread(('./test_images/test6.jpg''./test_ )
+heatmap = gen_heatmap(img, 1)
+bboxs =  get_bboxes(heatmap)
+heat = np.zeros(img.shape[0:2], dtype = np.float)
+heat = add_heat(heat, bboxs)
+plt.imshow(heat, cmap='hot')
+plt.show()
+heat = apply_threshold(heat, 3)
+```
+Function `gen_heatmap(img, class_index)`.  
+Parameters: `img`: The image you need to detect. `class_index`: `int` Detected category, 0:`non-vehicle`, 1:`vehicle`.
+The generated heat map is as follows:
+<div  align="center">    
+<img src="output_images/hot_image.png" width=60% height=60% border=0/>
+</div>
 
-Here is an example using the `YCrCb` color space and HOG parameters of `orientations=8`, `pixels_per_cell=(8, 8)` and `cells_per_block=(2, 2)`:
+- Generating label image
+```
+from scipy.ndimage.measurements import label
+labels = label(heat)
+print(labels[1], 'cars found')
+plt.imshow(labels[0], cmap='gray')
+plt.show()
+```
+<div  align="center">    
+<img src="output_images/lable_image.png" width=60% height=60% border=0/>
+</div>
 
+- Draw bounding boxes on a image
+```
+draw_img = draw_labeled_bboxes(np.copy(img), labels)
+plt.imshow(draw_img)
+plt.show()
+```
+<div  align="center">    
+<img src="output_images/draw_image.png" width=60% height=60% border=0/>
+</div>
 
-![alt text][image2]
+- Test all images
+The result is as follows:
 
-#### 2. Explain how you settled on your final choice of HOG parameters.
+<div  align="center">    
+<img src="output_images/result.jpg" width=60% height=60% border=0/>
+</div>
 
-I tried various combinations of parameters and...
+### Pipline Code
+Combine the **Step 5: Test model** contents of the previous chapter to form a pipline function.
+```
+def pipline(img):
+    global model
+    img_crop = img[400:660,:,:]
+    img_crop = imresize(img_crop,(260, 1280))
+    img_crop = np.expand_dims(img_crop, axis = 0)
+    heatmap = model.predict(img_crop)
+    heatmap[ heatmap < 0.99 ] = 0
+    heatmap[ heatmap >= 0.99] = 1
+    heatmap2 = np.squeeze(heatmap)[:, :, 1]    
+    bboxes = get_bboxes(heatmap2)
+    
+    heat = np.zeros(img.shape[0:2], dtype = np.float)
+    heat = add_heat(heat, bboxes)
+    heat = apply_threshold(heat, 3)
 
-#### 3. Describe how (and identify where in your code) you trained a classifier using your selected HOG features (and color features if you used them).
+    # Visualize the heatmap when displaying    
+    #heatmap = np.clip(heat, 0, 255)
+    labels = label(heat)
 
-I trained a linear SVM using...
-
-### Sliding Window Search
-
-#### 1. Describe how (and identify where in your code) you implemented a sliding window search.  How did you decide what scales to search and how much to overlap windows?
-
-I decided to search random window positions at random scales all over the image and came up with this (ok just kidding I didn't actually ;):
-
-![alt text][image3]
-
-#### 2. Show some examples of test images to demonstrate how your pipeline is working.  What did you do to optimize the performance of your classifier?
-
-Ultimately I searched on two scales using YCrCb 3-channel HOG features plus spatially binned color and histograms of color in the feature vector, which provided a nice result.  Here are some example images:
-
-![alt text][image4]
----
+    draw_img = draw_labeled_bboxes(np.copy(img), labels)
+    return draw_img
+```
 
 ### Video Implementation
+An example of applying the pipeline to a video can be found [here](./project_video_output.mp4)
 
-#### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (somewhat wobbly or unstable bounding boxes are ok as long as you are identifying the vehicles most of the time with minimal false positives.)
-Here's a [link to my video result](./project_video.mp4)
-
-
-#### 2. Describe how (and identify where in your code) you implemented some kind of filter for false positives and some method for combining overlapping bounding boxes.
-
-I recorded the positions of positive detections in each frame of the video.  From the positive detections I created a heatmap and then thresholded that map to identify vehicle positions.  I then used `scipy.ndimage.measurements.label()` to identify individual blobs in the heatmap.  I then assumed each blob corresponded to a vehicle.  I constructed bounding boxes to cover the area of each blob detected.  
-
-Here's an example result showing the heatmap from a series of frames of video, the result of `scipy.ndimage.measurements.label()` and the bounding boxes then overlaid on the last frame of video:
-
-### Here are six frames and their corresponding heatmaps:
-
-![alt text][image5]
-
-### Here is the output of `scipy.ndimage.measurements.label()` on the integrated heatmap from all six frames:
-![alt text][image6]
-
-### Here the resulting bounding boxes are drawn onto the last frame in the series:
-![alt text][image7]
-
-
-
----
 
 ### Discussion
 
-#### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
+##### Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
-Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
+- At the beginning, the model's bias is very large. In order to overcome this problem, use the image flipping technique to expand the data.
+- Sometimes there are repeated boxes on the same car. I think it would be better to use IOU and NMS. I might improve it if I were going to pursue this project further.  
 
